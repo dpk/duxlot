@@ -1613,6 +1613,19 @@ def _py(args):
     if line:
         return line[:510]
     return "Sorry, no result!"
+    
+@service(text)
+def rfc(args):
+    "Get the title and URL of an RFC"
+    if not args.text:
+        return text.rfc.__doc__
+    
+    if args.text.isnumeric():
+        url = 'https://tools.ietf.org/html/rfc'+args.text
+    else:
+        url = google.search_api(phrase=args.text+' site:tools.ietf.org/html')
+    
+    return web.title(url=url, follow=True)+': '+url
 
 @service(text)
 def rhymes(args):
