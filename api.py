@@ -577,6 +577,15 @@ def timezone_info(args):
     out.offset = out.json["offset_hours"]
     return out
 
+@service(geo)
+def flight(args):
+    out = duxlot.Storage()
+    page = web.request(
+        url="http://dial-a-page.dpk.org.uk/flights/",
+        query={"flight": args.flight}
+    )
+    
+    return json.loads(page.text)
 
 ### Module: Google ###
 
@@ -1300,6 +1309,49 @@ def ety(args):
     if "sentence" in opt:
         return "\"%s\" - %s" % (opt.sentence, opt.url)
     return "?"
+
+@service(text)
+def flight(args):
+    "Track a flight (if you know its number)"
+    if not args.text:
+        return text.flight.__doc__
+    
+    info = geo.flight(flight=args.text)
+    
+    if 'failure' in info:
+        return info['failure']
+    
+    result = ('%s: ' % info['number'])
+    hops = []
+    for hop in info['hops']:
+        sched = []
+        overnight = True
+        if (hop['arrive']['date'] == hop['depart']['date']):
+            sched.append(hop['arrive']['date'])
+            overnight = False
+        
+        for stop in ['depart', 'arrive']:
+            stopsched = None
+            if overnight:
+                stopsched = ' '.join([stop[0:3], hop[stop]['date'], hop[stop]['estimated_time']])
+            else:
+                stopsched = ' '.join([stop[0:3], hop[stop]['estimated_time']])
+            
+            if (hop[stop]['scheduled_time'] != hop[stop]['estimated_time']):
+                stopsched += (' (was %s)' % hop[stop]['scheduled_time'])
+            sched.append(stopsched)
+        sched = ', '.join(sched)
+        
+        hopdesc = ("%s \u2708 %s (%s, %s)" %
+          (hop['depart']['airport_code'],
+           hop['arrive']['airport_code'],
+           hop['status'],
+           sched))
+        hops.append(hopdesc)
+        
+    result += '; '.join(hops)
+    
+    return result
 
 @service(text)
 def follow(args):
